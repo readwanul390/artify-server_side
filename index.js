@@ -14,7 +14,7 @@ app.use(
       "http://localhost:5173",
       "https://artify-client-side.netlify.app",
     ],
-    methods: ["GET", "POST", "PATCH", "DELETE", "OPTIONS"],
+    methods: ["GET", "POST", "PATCH", "DELETE", "OPTIONS","PUT"],
     allowedHeaders: ["Content-Type", "Authorization"],
     credentials: false,
   })
@@ -61,6 +61,21 @@ const favoriteSchema = new mongoose.Schema({
 });
 
 const Favorite = mongoose.model("Favorite", favoriteSchema);
+
+// add near top (after mongoose import)
+const artistProfileSchema = new mongoose.Schema({
+  userEmail: { type: String, required: true, unique: true },
+  bio: { type: String, default: "" },
+  location: { type: String, default: "" },
+  website: { type: String, default: "" },
+  updatedAt: { type: Date, default: Date.now },
+});
+
+const ArtistProfile = mongoose.model(
+  "ArtistProfile",
+  artistProfileSchema
+);
+
 
 
 
@@ -239,6 +254,47 @@ app.delete("/favorites/:id", async (req, res) => {
     res.status(500).json({ message: "Server error" });
   }
 });
+
+app.get("/artist-profile", async (req, res) => {
+  try {
+    const { email } = req.query;
+    if (!email) return res.json({});
+
+    const profile = await ArtistProfile.findOne({
+      userEmail: email,
+    });
+
+    res.json(profile || {});
+  } catch (err) {
+    res.status(500).json({ message: "Server error" });
+  }
+});
+
+app.put("/artist-profile", async (req, res) => {
+  try {
+    const { userEmail, bio, location, website } = req.body;
+
+    if (!userEmail) {
+      return res.status(400).json({ message: "Email required" });
+    }
+
+    const profile = await ArtistProfile.findOneAndUpdate(
+      { userEmail },
+      {
+        bio,
+        location,
+        website,
+        updatedAt: new Date(),
+      },
+      { upsert: true, new: true }
+    );
+
+    res.json(profile);
+  } catch (err) {
+    res.status(500).json({ message: "Server error" });
+  }
+});
+
 
 app.get("/dashboard/stats", async (req, res) => {
   try {
